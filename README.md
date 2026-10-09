@@ -1,10 +1,10 @@
 # Smart Irrigation
 
-Controle de irrigação com filtro, histerese, intervalo mínimo, tempo máximo de bomba, sensor de reservatório e bloqueio por falha.
+Irrigation control with filtering, hysteresis, a minimum interval, a maximum pump runtime, a reservoir sensor, and fault lockout.
 
-## Executar
+## Run
 
-Requisitos: ESP32, C++17 e PlatformIO.
+Requirements: ESP32, C++17, and PlatformIO.
 
 ```sh
 pio run -e esp32dev
@@ -13,17 +13,21 @@ python -m pip install -r cloud/requirements.txt
 python cloud/serial_bridge.py /dev/ttyUSB0
 ```
 
-## Funcionamento
+## Behavior
 
-ADC: GPIO 34. Bomba: GPIO 26. Botão: GPIO 27. Reservatório: GPIO 25. A bomba inicia desligada; partida manual respeita bloqueios. A lógica pura está em `include/irrigation.hpp`, testada sem dispositivo. Calibre o sensor e valide relé e nível ativo antes da ligação.
+ADC: GPIO 34. Pump: GPIO 26. Button: GPIO 27. Reservoir: GPIO 25. The pump starts off; manual starts respect lockouts. Pure logic is in `include/irrigation.hpp` and is tested without hardware. Calibrate the sensor and validate the relay and active signal level before wiring.
 
-## Persistência de resultados
+## Result synchronization
 
-O arquivo de operações está em [vercel-home-telemetry-api.vercel.app](https://vercel-home-telemetry-api.vercel.app/laboratory.html?project=arduino-smart-irrigation). As migrações Supabase estão no [repositório da API](https://github.com/brunnojob/vercel-home-telemetry-api/tree/main/supabase/migrations).
+The [operations archive](https://vercel-home-telemetry-api.vercel.app/laboratory.html?project=arduino-smart-irrigation) stores execution results. Supabase migrations are in the [API repository](https://github.com/brunnojob/vercel-home-telemetry-api/tree/main/supabase/migrations).
 
 ```sh
-python cloud/sync.py enqueue resultado.json --project arduino-smart-irrigation
+python cloud/sync.py enqueue result.json --project arduino-smart-irrigation
 python cloud/sync.py sync
 ```
 
-Defina `BRUNNODEV_ACCESS_TOKEN` com sua sessão. A fila SQLite conserva os relatórios até confirmação do servidor; o mesmo conteúdo não gera registros duplicados. Tokens não são gravados no código.
+Set `BRUNNODEV_ACCESS_TOKEN` to your session token. The SQLite outbox retains reports until the server confirms persistence; identical content does not create duplicate records. Tokens are not stored in source code. To run the synchronization tests:
+
+```sh
+python -m unittest discover -s cloud
+```
