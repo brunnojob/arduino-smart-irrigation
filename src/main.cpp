@@ -1,26 +1,39 @@
+#include "irrigation.hpp"
 #include <Arduino.h>
-
-constexpr uint8_t sensorPin=34, pumpPin=26, buttonPin=27;
-constexpr int dryThreshold=2600, wetThreshold=1900;
-constexpr unsigned long maxRunMs=12000, lockoutMs=300000;
-unsigned long pumpStarted=0, lastStop=0;
-bool pumping=false, manual=false;
-
-void stopPump(unsigned long now) {
-  digitalWrite(pumpPin,LOW); pumping=false; lastStop=now;
-}
+constexpr int sensorPin = 34, pumpPin = 26, buttonPin = 27, reservoirPin = 25;
+IrrigationController controller;
+std::uint32_t lastSample = 0, buttonChanged = 0;
+bool previousButton = false, stableButton = false;
 void setup() {
-  pinMode(pumpPin,OUTPUT); pinMode(buttonPin,INPUT_PULLUP); digitalWrite(pumpPin,LOW);
+  pinMode(pumpPin, OUTPUT);
+  digitalWrite(pumpPin, LOW);
+  pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(reservoirPin, INPUT_PULLUP);
+  analogReadResolution(12);
   Serial.begin(115200);
 }
 void loop() {
-  const unsigned long now=millis();
-  const int moisture=analogRead(sensorPin);
-  if(digitalRead(buttonPin)==LOW) manual=true;
-  if(!pumping && (manual || (moisture>dryThreshold && now-lastStop>lockoutMs))) {
-    digitalWrite(pumpPin,HIGH); pumping=true; pumpStarted=now; manual=false;
+  std::uint32_t now = millis();
+  bool button = digitalRead(buttonPin) == LOW;
+  if (button != previousButton) {
+    previousButton = button;
+    buttonChanged = now;
   }
-  if(pumping && (moisture<wetThreshold || now-pumpStarted>=maxRunMs)) stopPump(now);
-  Serial.printf("{\"moisture\":%d,\"pump\":%s}\n",moisture,pumping?"true":"false");
-  delay(1000);
+  bool edge = false;
+  if (std::uint32_t(now - buttonChanged) >= 50 && button != stableButton) {
+    stableButton = button;
+    edge = button;
+  }
+  if (std::uint32_t(now - lastSample) >= 1000 || edge) {
+    lastSample = now;
+    auto status = controller.sample(
+        analogRead(sensorPin), digitalRead(reservoirPin) == LOW, edge, now);
+    digitalWrite(pumpPin, status.pump ? HIGH : LOW);
+    Serial.printf(
+        "{\"deviceId\":\"irrigation-01\",\"sequence\":%lu,\"timestampMs\":%lu,"
+        "\"moisture\":%d,\"pump\":%s,\"state\":%d,\"reason\":\"%s\"}\n",
+        static_cast<unsigned long>(status.sequence),
+        static_cast<unsigned long>(now), status.moisture,
+        status.pump ? "true" : "false", int(status.state), status.reason);
+  }
 }
