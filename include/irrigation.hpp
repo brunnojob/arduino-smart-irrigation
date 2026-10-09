@@ -38,10 +38,22 @@ public:
         c.cooldown >= 0x80000000U)
       throw std::invalid_argument("invalid irrigation configuration");
   }
+  IrrigationStatus tick(std::uint32_t now) {
+    if (initialized_ && std::uint32_t(now - lastSample_) > 5000) {
+      change(IrrigationState::Fault, now, "sample_watchdog");
+      dryCount_ = 0;
+    } else if (state_ == IrrigationState::Watering &&
+               std::uint32_t(now - changed_) >= config_.maxRun) {
+      change(IrrigationState::Cooldown, now, "run_limit");
+      dryCount_ = 0;
+    }
+    return snapshot();
+  }
   IrrigationStatus sample(int raw, bool reservoir, bool manual,
                           std::uint32_t now) {
     if (raw <= 0 || raw >= 4095 || !reservoir ||
-        (initialized_ && std::uint32_t(now - lastSample_) > 5000)) {
+        (state_ != IrrigationState::Fault && initialized_ &&
+         std::uint32_t(now - lastSample_) > 5000)) {
       change(IrrigationState::Fault, now,
              !reservoir ? "reservoir_empty" : "sensor_fault");
       dryCount_ = 0;

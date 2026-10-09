@@ -14,6 +14,7 @@ void setup() {
 }
 void loop() {
   std::uint32_t now = millis();
+  digitalWrite(pumpPin, controller.tick(now).pump ? HIGH : LOW);
   bool button = digitalRead(buttonPin) == LOW;
   if (button != previousButton) {
     previousButton = button;

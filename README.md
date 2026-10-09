@@ -24,3 +24,9 @@ Export a JSON report from the command above, then run `python cloud/sync.py enqu
 ## License
 
 Original source and documentation are MIT licensed; see [LICENSE](LICENSE). Third-party dependencies and media retain their respective terms. Maintained by [Brunno Dev](https://brunnodev.store).
+
+## Implementation update
+
+A loop-level watchdog deenergizes the pump when samples stop arriving. Fault recovery requires an explicit valid manual reset and returns through cooldown. The maximum run limit also applies between ADC samples. Native regression checks are in `tests/runtime_regressions.cpp`.
+
+Contribution trailer: `Co-authored-by: nyctophile <33561761+ineedfoundmyway@users.noreply.github.com>`.
